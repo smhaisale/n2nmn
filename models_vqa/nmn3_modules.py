@@ -8,6 +8,8 @@ from util.cnn import fc_layer as fc, conv_layer as conv
 from util.empty_safe_conv import empty_safe_1x1_conv as _1x1_conv
 from util.empty_safe_conv import empty_safe_conv as _conv
 
+from util.mcb import compact_bilinear_pooling_layer
+
 def add_spatial_coordinate_map(image_feat_grid):
     image_feat_shape = tf.shape(image_feat_grid)
     N = image_feat_shape[0]
@@ -114,8 +116,12 @@ class Modules:
                 text_param_mapped = fc('fc_text', text_param, output_dim=map_dim)
                 text_param_mapped = tf.reshape(text_param_mapped, to_T([N, 1, 1, map_dim]))
 
-                eltwise_mult = tf.nn.l2_normalize(image_feat_mapped * text_param_mapped, 3)
-                att_grid = _1x1_conv('conv_eltwise', eltwise_mult, output_dim=1)
+                # eltwise_mult = tf.nn.l2_normalize(image_feat_mapped * text_param_mapped, 3)
+
+                cbp_features = compact_bilinear_pooling_layer(image_feat_mapped, text_param_mapped, map_dim, sum_pool=False)
+                cbp_normalized = tf.nn.l2_normalize(cbp_features, 3)
+
+                att_grid = _1x1_conv('conv_eltwise', cbp_normalized, output_dim=1)
 
         att_grid.set_shape(self.att_shape)
         return att_grid
@@ -163,9 +169,14 @@ class Modules:
                 att_feat_mapped = tf.reshape(
                     fc('fc_att', att_feat, output_dim=map_dim), to_T([N, 1, 1, map_dim]))
 
-                eltwise_mult = tf.nn.l2_normalize(
-                    image_feat_mapped * text_param_mapped * att_feat_mapped, 3)
-                att_grid = _1x1_conv('conv_eltwise', eltwise_mult, output_dim=1)
+                # eltwise_mult = tf.nn.l2_normalize(
+                #    image_feat_mapped * text_param_mapped * att_feat_mapped, 3)
+
+                cbp_features = compact_bilinear_pooling_layer(image_feat_mapped, text_param_mapped, map_dim,
+                                                              sum_pool=False)
+                cbp_normalized = tf.nn.l2_normalize(cbp_features * att_feat_mapped, 3)
+
+                att_grid = _1x1_conv('conv_eltwise', cbp_normalized, output_dim=1)
 
         att_grid.set_shape(self.att_shape)
         return att_grid
@@ -229,12 +240,15 @@ class Modules:
                     fc('fc_att', att_feat, output_dim=map_dim),
                     to_T([N, map_dim]))
 
+                cbp_features = compact_bilinear_pooling_layer(text_param_mapped, att_feat_mapped,
+                                                              output_dim=map_dim, sum_pool=False)
+
                 if encoder_states is not None:
                     # Add in encoder states in the elementwise multiplication
                     encoder_states_mapped = fc('fc_encoder_states', encoder_states, output_dim=map_dim)
-                    eltwise_mult = tf.nn.l2_normalize(text_param_mapped * att_feat_mapped * encoder_states_mapped, 1)
+                    eltwise_mult = tf.nn.l2_normalize(cbp_features * encoder_states_mapped, 1)
                 else:
-                    eltwise_mult = tf.nn.l2_normalize(text_param_mapped * att_feat_mapped, 1)
+                    eltwise_mult = tf.nn.l2_normalize(cbp_features * att_feat_mapped, 1)
                 scores = fc('fc_eltwise', eltwise_mult, output_dim=self.num_choices)
 
         return scores
