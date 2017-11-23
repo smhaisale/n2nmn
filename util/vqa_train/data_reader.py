@@ -66,8 +66,12 @@ class BatchLoaderVqa:
 
         # load one feature map to peek its size
         feats = np.load(self.imdb[0]['feature_path'])
-        self.feat_H, self.feat_W, self.feat_D = feats.shape[1:]
-
+        
+        #################
+        #self.feat_H, self.feat_W = feats.shape[1:]
+        #self.feat_D = 1
+        self.feat_H, self.feat_W,self.feat_D = feats.shape[1:]
+        ##################
     def load_one_batch(self, sample_ids):
         actual_batch_size = len(sample_ids)
         input_seq_batch = np.zeros((self.T_encoder, actual_batch_size), np.int32)

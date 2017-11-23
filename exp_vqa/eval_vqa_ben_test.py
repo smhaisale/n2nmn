@@ -18,44 +18,47 @@ import tensorflow as tf
 sess = tf.Session(config=tf.ConfigProto(
     gpu_options=tf.GPUOptions(allow_growth=True),
     allow_soft_placement=False, log_device_placement=False))
+import json
 
-#######################################
-import os.path
 import sys
+import os.path
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-######################################
-from models_clevr.nmn3_assembler import Assembler
-from models_clevr.nmn3_model import NMN3Model
-from util.clevr_train.data_reader import DataReader
+
+from models_vqa.nmn3_assembler import Assembler
+from models_vqa.nmn3_model import NMN3Model
+from util.vqa_train.data_reader import DataReader
 
 # Module parameters
-H_feat = 10
-W_feat = 15
-D_feat = 512
+H_feat = 14
+W_feat = 14
+D_feat = 2048
 embed_dim_txt = 300
 embed_dim_nmn = 300
-lstm_dim = 512
+lstm_dim = 1000
 num_layers = 2
-T_encoder = 45
-T_decoder = 20
-N = 64
-prune_filter_module = True
+T_encoder = 26
+T_decoder = 13
+N = 50
+use_qpn = True
+reduce_visfeat_dim = False
 
 exp_name = args.exp_name
 snapshot_name = args.snapshot_name
 tst_image_set = args.test_split
-snapshot_file = './exp_clevr/tfmodel/%s/%s' % (exp_name, snapshot_name)
+snapshot_file = './exp_vqa/tfmodel/%s/%s' % (exp_name, snapshot_name)
 
 # Data files
-vocab_question_file = './exp_clevr/data/vocabulary_clevr.txt'
-vocab_layout_file = './exp_clevr/data/vocabulary_layout.txt'
-vocab_answer_file = './exp_clevr/data/answers_clevr.txt'
+vocab_question_file = './exp_vqa/data/vocabulary_vqa.txt'
+vocab_layout_file = './exp_vqa/data/vocabulary_layout.txt'
+vocab_answer_file = './exp_vqa/data/answers_vqa.txt'
 
-imdb_file_tst = './exp_clevr/data/imdb/imdb_%s.npy' % tst_image_set
+imdb_file_tst = './exp_vqa/data/imdb/imdb_%s.npy' % tst_image_set
 
-save_file = './exp_clevr/results/%s/%s.%s.txt' % (exp_name, snapshot_name, tst_image_set)
+save_file = './exp_vqa/results/%s/%s.%s.txt' % (exp_name, snapshot_name, tst_image_set)
 os.makedirs(os.path.dirname(save_file), exist_ok=True)
-eval_output_file = './exp_clevr/eval_outputs/%s/%s.%s.txt' % (exp_name, snapshot_name, tst_image_set)
+eval_output_name = 'vqa_OpenEnded_mscoco_%s_%s_%s_results.json' % (tst_image_set, exp_name, snapshot_name)
+eval_output_file = './exp_vqa/eval_outputs/%s/%s' % (exp_name, eval_output_name)
 os.makedirs(os.path.dirname(eval_output_file), exist_ok=True)
 
 assembler = Assembler(vocab_layout_file)
@@ -66,8 +69,7 @@ data_reader_tst = DataReader(imdb_file_tst, shuffle=False, one_pass=True,
                              T_decoder=T_decoder,
                              assembler=assembler,
                              vocab_question_file=vocab_question_file,
-                             vocab_answer_file=vocab_answer_file,
-                             prune_filter_module=prune_filter_module)
+                             vocab_answer_file=vocab_answer_file)
 
 num_vocab_txt = data_reader_tst.batch_loader.vocab_dict.num_vocab
 num_vocab_nmn = len(assembler.module_names)
@@ -90,22 +92,24 @@ nmn3_model_tst = NMN3Model(
     encoder_dropout=False,
     decoder_dropout=False,
     decoder_sampling=False,
-    num_choices=num_choices)
+    num_choices=num_choices,
+    use_qpn=use_qpn, qpn_dropout=False, reduce_visfeat_dim=reduce_visfeat_dim)
 
-snapshot_saver = tf.train.Saver(max_to_keep=None)
+snapshot_saver = tf.train.Saver(max_to_keep=None)  # keep all snapshots
 snapshot_saver.restore(sess, snapshot_file)
 
 def run_test(dataset_tst, save_file, eval_output_file):
     if dataset_tst is None:
         return
     print('Running test...')
-    answer_correct = 0
     layout_correct = 0
     layout_valid = 0
     num_questions = 0
     answer_word_list = dataset_tst.batch_loader.answer_dict.word_list
-    output_answers = []
-    for batch in dataset_tst.batches():
+    # the first word should be <unk> in answer list
+    assert(answer_word_list[0] == '<unk>')
+    output_qids_answers = []
+    for n_q, batch in enumerate(dataset_tst.batches()):
         # set up input and output tensors
         h = sess.partial_run_setup(
             [nmn3_model_tst.predicted_tokens, nmn3_model_tst.scores],
@@ -135,21 +139,21 @@ def run_test(dataset_tst, save_file, eval_output_file):
 
         # Part 2: Run NMN and learning steps
         scores_val = sess.partial_run(h, nmn3_model_tst.scores, feed_dict=expr_feed)
+        scores_val[:, 0] = -1e10  # remove <unk> answer
 
         # compute accuracy
         predictions = np.argmax(scores_val, axis=1)
         if dataset_tst.batch_loader.load_answer:
             labels = batch['answer_label_batch']
-            answer_correct += np.sum(predictions == labels)
         num_questions += len(expr_validity_array)
-        output_answers += [answer_word_list[p] for p in predictions]
 
-    answer_accuracy = answer_correct / num_questions
+        qid_list = batch['qid_list']
+        output_qids_answers += [{'question_id': int(qid), 'answer': answer_word_list[p]}
+                                for qid, p in zip(qid_list, predictions)]
+
     layout_accuracy = layout_correct / num_questions
     layout_validity = layout_valid / num_questions
     print('On split: %s' % tst_image_set)
-    print('\tanswer accuracy = %f (%d / %d)' %
-          (answer_accuracy, answer_correct, num_questions))
     print('\tlayout accuracy = %f (%d / %d)' %
           (layout_accuracy, layout_correct, num_questions))
     print('\tlayout validity = %f (%d / %d)' %
@@ -157,14 +161,12 @@ def run_test(dataset_tst, save_file, eval_output_file):
     # write the results to file
     with open(save_file, 'w') as f:
         print('On split: %s' % tst_image_set, file=f)
-        print('\tanswer accuracy = %f (%d / %d)' %
-          (answer_accuracy, answer_correct, num_questions), file=f)
         print('\tlayout accuracy = %f (%d / %d)' %
               (layout_accuracy, layout_correct, num_questions), file=f)
         print('\tlayout validity = %f (%d / %d)' %
               (layout_validity, layout_valid, num_questions), file=f)
     with open(eval_output_file, 'w') as f:
-        f.writelines([a + '\n' for a in output_answers])
+        json.dump(output_qids_answers, f, separators=(',\n', ':\n'))
         print('prediction file written to', eval_output_file)
 
 run_test(data_reader_tst, save_file, eval_output_file)
