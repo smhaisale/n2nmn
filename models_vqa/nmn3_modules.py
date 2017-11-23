@@ -60,6 +60,7 @@ class Modules:
         self.AndModule(input_att, input_att, time_idx, batch_idx, reuse=False)
         self.DescribeModule(input_att, time_idx, batch_idx, reuse=False)
         self.CountModule(input_att, time_idx, batch_idx, reuse=False)
+        self.CountModuleAttention(input_att, time_idx, batch_idx, reuse=False)      
 
     def _slice_image_feat_grid(self, batch_idx):
         # In TF Fold, batch_idx is a [N_batch, 1] tensor
@@ -240,7 +241,7 @@ class Modules:
 
         return scores
 
-    def CountModule2(self, input_0, time_idx, batch_idx,
+    def CountModule(self, input_0, time_idx, batch_idx,
         map_dim=1024, scope='CountModule', reuse=True):
         # In TF Fold, batch_idx and time_idx are both [N_batch, 1] tensors
 
@@ -291,8 +292,8 @@ class Modules:
 
     # The consumer of these modules usually expects a vector of [N, self.num_choices] and then performs softmax.
     # This count module is regression based and should be handled appropriately by the caller.
-    def CountModule(self, input_0, time_idx, batch_idx,
-        scope='CountModule', reuse=True):
+    def CountModuleAttention(self, input_0, time_idx, batch_idx,
+        scope='CountModuleAttention', reuse=True):
         # In TF Fold, batch_idx and time_idx are both [N_batch, 1] tensors
 
         # Mapping: att_grid -> answer probs
@@ -311,6 +312,6 @@ class Modules:
                 att_max = tf.reduce_max(input_0, axis=[1, 2])
                 # att_reduced has shape [N, 3]
                 att_concat = tf.concat([att_all, att_min, att_max], axis=1)
-                scores = fc('fc_scores', att_concat, output_dim=self.num_choices)
-
-        return scores
+                # scores = fc('fc_scores', att_concat, output_dim=self.num_choices)
+                counts = regression('fc_scores', att_concat, output_dim=self.num_choices)
+        return counts
