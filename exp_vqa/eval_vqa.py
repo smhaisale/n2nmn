@@ -20,6 +20,11 @@ sess = tf.Session(config=tf.ConfigProto(
     allow_soft_placement=False, log_device_placement=False))
 import json
 
+#######################################
+import os.path
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+######################################
 from models_vqa.nmn3_assembler import Assembler
 from models_vqa.nmn3_model import NMN3Model
 from util.vqa_train.data_reader import DataReader
@@ -104,7 +109,10 @@ def run_test(dataset_tst, save_file, eval_output_file):
     # the first word should be <unk> in answer list
     assert(answer_word_list[0] == '<unk>')
     output_qids_answers = []
+    q_number = 0
     for n_q, batch in enumerate(dataset_tst.batches()):
+        q_number=q_number+1
+        print(q_number)
         # set up input and output tensors
         h = sess.partial_run_setup(
             [nmn3_model_tst.predicted_tokens, nmn3_model_tst.scores],
