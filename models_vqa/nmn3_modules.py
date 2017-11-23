@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import convert_to_tensor as to_T
 
-from util.cnn import fc_layer as fc, conv_layer as conv
+from util.cnn import fc_layer as fc, regression_layer as regression
 from util.empty_safe_conv import empty_safe_1x1_conv as _1x1_conv
 from util.empty_safe_conv import empty_safe_conv as _conv
 
@@ -59,6 +59,8 @@ class Modules:
         self.TransformModule(input_att, time_idx, batch_idx, reuse=False)
         self.AndModule(input_att, input_att, time_idx, batch_idx, reuse=False)
         self.DescribeModule(input_att, time_idx, batch_idx, reuse=False)
+        self.CountModule(input_att, time_idx, batch_idx, reuse=False)
+        self.CountModuleAttention(input_att, time_idx, batch_idx, reuse=False)      
 
     def _slice_image_feat_grid(self, batch_idx):
         # In TF Fold, batch_idx is a [N_batch, 1] tensor
@@ -238,3 +240,78 @@ class Modules:
                 scores = fc('fc_eltwise', eltwise_mult, output_dim=self.num_choices)
 
         return scores
+
+    def CountModule(self, input_0, time_idx, batch_idx,
+        map_dim=1024, scope='CountModule', reuse=True):
+        # In TF Fold, batch_idx and time_idx are both [N_batch, 1] tensors
+
+        image_feat_grid = self._slice_image_feat_grid(batch_idx)
+        text_param = self._slice_word_vecs(time_idx, batch_idx)
+        encoder_states = self._slice_encoder_states(batch_idx)
+        # Mapping: att_grid -> count
+        # Input:
+        #   input_0: [N, H, W, 1]
+        # Output:
+        #   answer_counts: [N, 1]
+        #
+        # Implementation:
+        #   1. Extract visual features using the input attention map, and
+        #      linear transform to map_dim
+        #   2. linear transform language features to map_dim
+        #   3. Element-wise multiplication of the two, l2_normalize, linear transform.
+        with tf.variable_scope(self.module_variable_scope):
+            with tf.variable_scope(scope, reuse=reuse):
+                image_shape = tf.shape(image_feat_grid)
+                N = tf.shape(time_idx)[0]
+                H = image_shape[1]
+                W = image_shape[2]
+                D_im = image_feat_grid.get_shape().as_list()[-1]
+                D_txt = text_param.get_shape().as_list()[-1]
+
+                text_param_mapped = fc('fc_text', text_param, output_dim=map_dim)
+
+                att_softmax = tf.reshape(
+                    tf.nn.softmax(tf.reshape(input_0, to_T([N, H*W]))),
+                    to_T([N, H, W, 1]))
+
+                # att_feat, att_feat_1 has shape [N, D_vis]
+                att_feat = tf.reduce_sum(image_feat_grid * att_softmax, axis=[1, 2])
+                att_feat_mapped = tf.reshape(
+                    fc('fc_att', att_feat, output_dim=map_dim),
+                    to_T([N, map_dim]))
+
+                if encoder_states is not None:
+                    # Add in encoder states in the elementwise multiplication
+                    encoder_states_mapped = fc('fc_encoder_states', encoder_states, output_dim=map_dim)
+                    eltwise_mult = tf.nn.l2_normalize(text_param_mapped * att_feat_mapped * encoder_states_mapped, 1)
+                else:
+                    eltwise_mult = tf.nn.l2_normalize(text_param_mapped * att_feat_mapped, 1)
+                counts = regression('fc_eltwise', eltwise_mult, output_dim=self.num_choices)
+
+        return counts
+
+    # The consumer of these modules usually expects a vector of [N, self.num_choices] and then performs softmax.
+    # This count module is regression based and should be handled appropriately by the caller.
+    def CountModuleAttention(self, input_0, time_idx, batch_idx,
+        scope='CountModuleAttention', reuse=True):
+        # In TF Fold, batch_idx and time_idx are both [N_batch, 1] tensors
+
+        # Mapping: att_grid -> answer probs
+        # Input:
+        #   input_0: [N, H, W, 1]
+        # Output:
+        #   answer_scores: [N, 1]
+        #
+        # Implementation:
+        #   1. linear transform of the attention map (also including max and min)
+        with tf.variable_scope(self.module_variable_scope):
+            with tf.variable_scope(scope, reuse=reuse):
+                H, W = self.att_shape[1:3]
+                att_all = tf.reshape(input_0, to_T([-1, H*W]))
+                att_min = tf.reduce_min(input_0, axis=[1, 2])
+                att_max = tf.reduce_max(input_0, axis=[1, 2])
+                # att_reduced has shape [N, 3]
+                att_concat = tf.concat([att_all, att_min, att_max], axis=1)
+                # scores = fc('fc_scores', att_concat, output_dim=self.num_choices)
+                counts = regression('fc_scores', att_concat, output_dim=self.num_choices)
+        return counts
