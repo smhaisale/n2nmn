@@ -79,14 +79,18 @@ def build_imdb(image_set):
         imdb[n_q] = iminfo
     print('total %d out of %d answers are <unk>' % (unk_ans_count, len(questions)))
     return imdb
-
+imdb_tdiuc = build_imdb('tdiuc')
 imdb_train2014 = build_imdb('train2014')
 imdb_val2014 = build_imdb('val2014')
 imdb_test2015 = build_imdb('test2015')
 imdb_test_dev2015 = build_imdb('test-dev2015')
 
 os.makedirs('./imdb', exist_ok=True)
+#######################
+np.save('./imdb/imdb_tdiuc.npy', np.array(imdb_tdiuc))
+#######################
 np.save('./imdb/imdb_train2014.npy', np.array(imdb_train2014))
+np.save('./imdb/imdb_val2014.npy', np.array(imdb_val2014))
 np.save('./imdb/imdb_val2014.npy', np.array(imdb_val2014))
 np.save('./imdb/imdb_trainval2014.npy', np.array(imdb_train2014 + imdb_val2014))
 np.save('./imdb/imdb_test2015.npy', np.array(imdb_test2015))

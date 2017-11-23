@@ -19,6 +19,12 @@ sess = tf.Session(config=tf.ConfigProto(
     gpu_options=tf.GPUOptions(allow_growth=True),
     allow_soft_placement=False, log_device_placement=False))
 
+#######################################
+import os.path
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+######################################
+
 from models_clevr.nmn3_assembler import Assembler
 from models_clevr.nmn3_model import NMN3Model
 from util.clevr_train.data_reader import DataReader
