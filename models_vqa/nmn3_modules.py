@@ -116,10 +116,14 @@ class Modules:
                 text_param_mapped = fc('fc_text', text_param, output_dim=map_dim)
                 text_param_mapped = tf.reshape(text_param_mapped, to_T([N, 1, 1, map_dim]))
 
-                # eltwise_mult = tf.nn.l2_normalize(image_feat_mapped * text_param_mapped, 3)
+                eltwise_mult = tf.nn.l2_normalize(image_feat_mapped * text_param_mapped, 3)
 
-                cbp_features = compact_bilinear_pooling_layer(image_feat_mapped, text_param_mapped, map_dim, sum_pool=False)
+                cbp_features = compact_bilinear_pooling_layer(bottom1=image_feat_mapped, bottom2=text_param_mapped, output_dim=map_dim, sum_pool=False)
+                cbp_features = tf.reshape(cbp_features, [N, H, W, 1024])
                 cbp_normalized = tf.nn.l2_normalize(cbp_features, 3)
+
+                # import pdb
+                # pdb.set_trace()
 
                 att_grid = _1x1_conv('conv_eltwise', cbp_normalized, output_dim=1)
 
@@ -174,6 +178,7 @@ class Modules:
 
                 cbp_features = compact_bilinear_pooling_layer(image_feat_mapped, text_param_mapped, map_dim,
                                                               sum_pool=False)
+                cbp_features = tf.reshape(cbp_features, [N, H, W, 1024])
                 cbp_normalized = tf.nn.l2_normalize(cbp_features * att_feat_mapped, 3)
 
                 att_grid = _1x1_conv('conv_eltwise', cbp_normalized, output_dim=1)
@@ -240,9 +245,10 @@ class Modules:
                     fc('fc_att', att_feat, output_dim=map_dim),
                     to_T([N, map_dim]))
 
-                cbp_features = compact_bilinear_pooling_layer(text_param_mapped, att_feat_mapped,
+                cbp_features = compact_bilinear_pooling_layer(tf.reshape(text_param_mapped, [N, 1, 1, map_dim]), att_feat_mapped,
                                                               output_dim=map_dim, sum_pool=False)
-
+                cbp_features = tf.reshape(cbp_features, [N, map_dim])
+                
                 if encoder_states is not None:
                     # Add in encoder states in the elementwise multiplication
                     encoder_states_mapped = fc('fc_encoder_states', encoder_states, output_dim=map_dim)
