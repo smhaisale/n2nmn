@@ -3,9 +3,11 @@ from __future__ import absolute_import, division, print_function
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu_id', type=int, default=0)
+parser.add_argument('-c', '--count', action='store_true')
 args = parser.parse_args()
 
 gpu_id = args.gpu_id  # set GPU id to use
+count = args.count
 import os; os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
 import numpy as np
@@ -97,12 +99,17 @@ nmn3_model_trn = NMN3Model(
     use_gt_layout=use_gt_layout,
     gt_layout_batch=gt_layout_batch)
 
-# Loss function
-softmax_loss_per_sample = tf.nn.sparse_softmax_cross_entropy_with_logits(
-    logits=nmn3_model_trn.scores, labels=answer_label_batch)
-# The final per-sample loss, which is vqa loss for valid expr
-# and invalid_expr_loss for invalid expr
-final_loss_per_sample = softmax_loss_per_sample  # All exprs are valid
+# Note: verify that answer_label_batch contain numbers only
+if count:
+    loss_per_sample = tf.losses.mean_squared_error(
+        predictions=nmn3_model_trn.scores, labels=answer_label_batch)
+else:
+    # Loss function
+    loss_per_sample = tf.nn.sparse_softmax_cross_entropy_with_logits(
+        logits=nmn3_model_trn.scores, labels=answer_label_batch)
+
+# The final per-sample loss, which is vqa loss for valid expr and invalid_expr_loss for invalid expr
+final_loss_per_sample = loss_per_sample  # All exprs are valid
 
 avg_sample_loss = tf.reduce_mean(final_loss_per_sample)
 seq_likelihood_loss = tf.reduce_mean(-nmn3_model_trn.log_seq_prob)

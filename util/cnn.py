@@ -124,3 +124,8 @@ def fc_relu_layer(name, bottom, output_dim, bias_term=True,
                   biases_initializer, reuse=reuse)
     relu = tf.nn.relu(fc)
     return relu
+
+def regression_layer(name, bottom, output_dim, bias_term=True,
+                  weights_initializer=None, biases_initializer=None, reuse=None):
+    return fc_layer(name, bottom, 1, bias_term, weights_initializer,
+                  biases_initializer, reuse=reuse)
