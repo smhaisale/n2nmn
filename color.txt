@@ -1,0 +1,16 @@
+<Add new module>
+
+Add new module name, module input, module output in models_vqa/nmn3_assembler.py
+Add new module definition in models_vqa/nmn3_modules.py
+Add new module references in models_vqa/nmn3_model.py
+Add new module name in exp_vqa/data/vocabulary_layout.txt
+
+<Use parsed GT layouts>
+Gather all layout files in a single folder under parse (e.g. data/parse/tdiuc_parse)
+Run the notebook exp_vqa/data/convert_new_*.ipynb after changing directory to the new parse folder
+Run the build_imdb script after changing file format to a different format to avoid overwriting
+Check data/imdb folder for three .npy files
+
+<Run training>
+Change training script to point to a new snapshot folder
+Run python exp_vqa/train_vqa_gt_layout

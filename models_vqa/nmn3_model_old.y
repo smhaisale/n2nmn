@@ -85,32 +85,7 @@ class NMN3Model:
                                            ('batch_idx', td.Scalar('int32'))])
                 case_describe = case_describe >> \
                     td.Function(modules.DescribeModule)
-                
-                # _Color
-                case_color = td.Record([('input_0', att_expr_decl()),
-                                           ('time_idx', td.Scalar('int32')),
-                                           ('batch_idx', td.Scalar('int32'))])
-                case_color = case_color >> \
-                    td.Function(modules.ColorModule)
-                # _Sentiment
-                case_sentiment = td.Record([('input_0', att_expr_decl()),
-                                           ('time_idx', td.Scalar('int32')),
-                                           ('batch_idx', td.Scalar('int32'))])
-                case_sentiment = case_sentiment >> \
-                    td.Function(modules.SentimentModule)
-                # _Scene
-                case_scene = td.Record([('input_0', att_expr_decl()),
-                                           ('time_idx', td.Scalar('int32')),
-                                           ('batch_idx', td.Scalar('int32'))])
-                case_scene = case_scene >> \
-                    td.Function(modules.SceneModule)
-                # _Activity
-                case_activity = td.Record([('input_0', att_expr_decl()),
-                                           ('time_idx', td.Scalar('int32')),
-                                           ('batch_idx', td.Scalar('int32'))])
-                case_activity = case_activity >> \
-                    td.Function(modules.ActivityModule)
-                
+
                 recursion_cases = td.OneOf(td.GetItem('module'), {
                     '_Find': case_find,
                     '_Transform': case_transform,
@@ -122,7 +97,6 @@ class NMN3Model:
                 dummy_scores = td.Void() >> td.FromTensor(np.zeros(num_choices, np.float32))
                 output_scores = td.OneOf(td.GetItem('module'), {
                     '_Describe': case_describe,
-                    #_Color': case_color,
                     INVALID_EXPR: dummy_scores})
 
                 # compile and get the output scores
@@ -145,3 +119,4 @@ class NMN3Model:
                               if (scope in v.op.name and
                                   v.op.name.endswith('weights'))]
             self.l2_reg = tf.add_n([tf.nn.l2_loss(v) for v in module_weights])
+
