@@ -86,6 +86,13 @@ class NMN3Model:
                 case_describe = case_describe >> \
                     td.Function(modules.DescribeModule)
                 
+                # _Count
+                case_count = td.Record([('input_0', att_expr_decl()),
+                                           ('time_idx', td.Scalar('int32')),
+                                           ('batch_idx', td.Scalar('int32'))])
+                case_count = case_count >> \
+                    td.Function(modules.CountModule)
+                
                 # _Color
                 case_color = td.Record([('input_0', att_expr_decl()),
                                            ('time_idx', td.Scalar('int32')),
@@ -122,7 +129,11 @@ class NMN3Model:
                 dummy_scores = td.Void() >> td.FromTensor(np.zeros(num_choices, np.float32))
                 output_scores = td.OneOf(td.GetItem('module'), {
                     '_Describe': case_describe,
-                    #_Color': case_color,
+                    '_Count': case_count,
+                    '_Color': case_color,
+                    '_Sentiment': case_sentiment,
+                    '_Scene': case_scene,
+                    '_Activity': case_activity,
                     INVALID_EXPR: dummy_scores})
 
                 # compile and get the output scores

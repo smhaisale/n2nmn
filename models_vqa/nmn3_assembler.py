@@ -11,7 +11,11 @@ _module_input_num = {
     '_Transform': 1,
     '_And': 2,
     '_Describe': 1,
-    # '_Color': 1
+    '_Count': 1,
+    '_Color': 1,
+    '_Sentiment': 1,
+    '_Scene': 1,
+    '_Activity': 1
     }
 
 # output type of each module
@@ -19,8 +23,12 @@ _module_output_type = {
     '_Find': 'att',
     '_Transform': 'att',
     '_And': 'att',
-    '_Describe': 'ans'
-    # '_Color': 'ans'
+    '_Describe': 'ans',
+    '_Count': 'ans',
+    '_Color': 'ans',
+    '_Sentiment': 'ans',
+    '_Scene': 'ans',
+    '_Activity': 'ans'
     }
 INVALID_EXPR = 'INVALID_EXPR'
 # decoding validity: maintaining a state x of [#att, #ans, T_remain]
@@ -47,7 +55,7 @@ def _build_validity_mats(module_names):
             att_in_nums[n_s] = _module_input_num[s]
             att_out_nums[n_s] = _module_output_type[s] == 'att'
             ans_out_nums[n_s] = _module_output_type[s] == 'ans'
-    # construct the trasition matrix P
+    # construct the transition matrix P
     for n_s, s in enumerate(module_names):
         P[n_s, 0] = att_out_nums[n_s] - att_in_nums[n_s]
         P[n_s, 1] = ans_out_nums[n_s]

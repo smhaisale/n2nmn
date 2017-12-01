@@ -2,4 +2,9 @@ _Find
 _Transform
 _And
 _Describe
+_Count
+_Color
+_Sentiment
+_Scene
+_Activity
 <eos>
