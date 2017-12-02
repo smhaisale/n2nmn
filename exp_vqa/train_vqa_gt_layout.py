@@ -50,8 +50,8 @@ glove_mat_file = './exp_vqa/data/vocabulary_vqa_glove.npy'
 # Training parameters
 weight_decay = 0
 baseline_decay = 0.99
-max_iter = 5000 # 40000
-snapshot_interval = 1000 # 5000
+max_iter = 40000
+snapshot_interval = 2500
 exp_name = "vqa_gt_layout"
 snapshot_dir = './exp_vqa/tfmodel/%s/' % exp_name
 
