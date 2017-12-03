@@ -3,11 +3,9 @@ from __future__ import absolute_import, division, print_function
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu_id', type=int, default=0)
-parser.add_argument('-c', '--count', action='store_true')
 args = parser.parse_args()
 
 gpu_id = args.gpu_id  # set GPU id to use
-count = args.count
 import os; os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
 import numpy as np
@@ -18,11 +16,10 @@ sess = tf.Session(config=tf.ConfigProto(
     gpu_options=tf.GPUOptions(allow_growth=True),
     allow_soft_placement=False, log_device_placement=False))
 
-#######################################
 import os.path
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-######################################
+
 
 from models_vqa.nmn3_assembler import Assembler
 from models_vqa.nmn3_model import NMN3Model
@@ -60,11 +57,13 @@ log_interval = 20
 log_dir = './exp_vqa/tb/%s/' % exp_name
 
 # Data files
+# Data files
 vocab_question_file = './exp_vqa/data/vocabulary_tdiuc_200K.txt'
 vocab_layout_file = './exp_vqa/data/vocabulary_layout.txt'
 vocab_answer_file = './exp_vqa/data/answers_tdiuc_200K.txt'
 
 imdb_file_trn = './exp_vqa/data/imdb/imdb_trainval2014.npy'
+
 
 assembler = Assembler(vocab_layout_file)
 
@@ -105,17 +104,12 @@ nmn3_model_trn = NMN3Model(
     use_gt_layout=use_gt_layout,
     gt_layout_batch=gt_layout_batch)
 
-# Note: verify that answer_label_batch contain numbers only
-#loss_per_sample_regression = tf.losses.mean_squared_error(
-#    predictions=nmn3_model_trn.scores, labels=answer_label_batch)
-    
-
 # Loss function
 softmax_loss_per_sample = tf.nn.sparse_softmax_cross_entropy_with_logits(
     logits=nmn3_model_trn.scores, labels=answer_label_batch)
-
-# The final per-sample loss, which is vqa loss for valid expr and invalid_expr_loss for invalid expr
-final_loss_per_sample = softmax_loss_per_sample #+ loss_per_sample_regression  # All exprs are valid
+# The final per-sample loss, which is vqa loss for valid expr
+# and invalid_expr_loss for invalid expr
+final_loss_per_sample = softmax_loss_per_sample  # All exprs are valid
 
 avg_sample_loss = tf.reduce_mean(final_loss_per_sample)
 seq_likelihood_loss = tf.reduce_mean(-nmn3_model_trn.log_seq_prob)
