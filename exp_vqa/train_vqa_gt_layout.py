@@ -45,13 +45,17 @@ N = 64
 use_qpn = True
 qpn_dropout = True
 reduce_visfeat_dim = False
-glove_mat_file = './exp_vqa/data/vocabulary_vqa_glove.npy'
+glove_mat_file = './exp_vqa/data/vocabulary_tdiuc_200K_glove.npy'
 
 # Training parameters
 weight_decay = 0
 baseline_decay = 0.99
 max_iter = 40000
+<<<<<<< HEAD
 snapshot_interval = 2500
+=======
+snapshot_interval = 1000
+>>>>>>> cff849ec87b915b0ea63c57c13fa98313d8acc04
 exp_name = "vqa_gt_layout"
 snapshot_dir = './exp_vqa/tfmodel/%s/' % exp_name
 
@@ -60,9 +64,9 @@ log_interval = 20
 log_dir = './exp_vqa/tb/%s/' % exp_name
 
 # Data files
-vocab_question_file = './exp_vqa/data/vocabulary_vqa.txt'
+vocab_question_file = './exp_vqa/data/vocabulary_tdiuc_200K.txt'
 vocab_layout_file = './exp_vqa/data/vocabulary_layout.txt'
-vocab_answer_file = './exp_vqa/data/answers_vqa.txt'
+vocab_answer_file = './exp_vqa/data/answers_tdiuc_200K.txt'
 
 imdb_file_trn = './exp_vqa/data/imdb/imdb_train2014.npy'
 
@@ -106,6 +110,7 @@ nmn3_model_trn = NMN3Model(
     gt_layout_batch=gt_layout_batch)
 
 # Note: verify that answer_label_batch contain numbers only
+<<<<<<< HEAD
 if count:
     loss_per_sample = tf.losses.mean_squared_error(
         predictions=nmn3_model_trn.scores, labels=answer_label_batch)
@@ -116,6 +121,18 @@ else:
 
 # The final per-sample loss, which is vqa loss for valid expr and invalid_expr_loss for invalid expr
 final_loss_per_sample = loss_per_sample  # All exprs are valid
+=======
+#loss_per_sample_regression = tf.losses.mean_squared_error(
+#    predictions=nmn3_model_trn.scores, labels=answer_label_batch)
+    
+
+# Loss function
+softmax_loss_per_sample = tf.nn.sparse_softmax_cross_entropy_with_logits(
+    logits=nmn3_model_trn.scores, labels=answer_label_batch)
+
+# The final per-sample loss, which is vqa loss for valid expr and invalid_expr_loss for invalid expr
+final_loss_per_sample = softmax_loss_per_sample #+ loss_per_sample_regression  # All exprs are valid
+>>>>>>> cff849ec87b915b0ea63c57c13fa98313d8acc04
 
 avg_sample_loss = tf.reduce_mean(final_loss_per_sample)
 seq_likelihood_loss = tf.reduce_mean(-nmn3_model_trn.log_seq_prob)
@@ -236,7 +253,7 @@ def run_training(max_iter, dataset_trn):
 
         # Save snapshot
         if (n_iter+1) % snapshot_interval == 0 or (n_iter+1) == max_iter:
-            snapshot_file = os.path.join(snapshot_dir, "%08d" % (n_iter+1))
+            snapshot_file = os.path.join(snapshot_dir, "tdiuc_200K_%08d" % (n_iter+1))
             snapshot_saver.save(sess, snapshot_file, write_meta_graph=False)
             print('snapshot saved to ' + snapshot_file)
 
