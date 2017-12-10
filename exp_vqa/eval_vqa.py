@@ -50,9 +50,9 @@ tst_image_set = args.test_split
 snapshot_file = './exp_vqa/tfmodel/%s/%s' % (exp_name, snapshot_name)
 
 # Data files
-vocab_question_file = './exp_vqa/data/vocabulary_vqa.txt'
+vocab_question_file = './exp_vqa/data/vocabulary_tdiuc_200K.txt'
 vocab_layout_file = './exp_vqa/data/vocabulary_layout.txt'
-vocab_answer_file = './exp_vqa/data/answers_vqa.txt'
+vocab_answer_file = './exp_vqa/data/answers_tdiuc_200K.txt'
 
 imdb_file_tst = './exp_vqa/data/imdb/imdb_%s.npy' % tst_image_set
 

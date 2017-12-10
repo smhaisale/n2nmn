@@ -3,6 +3,9 @@ from __future__ import absolute_import, division, print_function
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu_id', type=int, default=0)
+##########################################################################################changes for fine tune
+parser.add_argument('--pretrained_model',default='./exp_vqa/tfmodel/vqa_gt_layout/tdiuc_modified_200K_00025000')
+########################################################################################33
 args = parser.parse_args()
 
 gpu_id = args.gpu_id  # set GPU id to use
@@ -50,6 +53,9 @@ baseline_decay = 0.99
 max_iter = 40000
 snapshot_interval = 1000
 exp_name = "vqa_gt_layout"
+##################################################changes for fine tune
+pretrained_model = args.pretrained_model
+##################################################
 snapshot_dir = './exp_vqa/tfmodel/%s/' % exp_name
 
 # Log params
@@ -164,7 +170,12 @@ os.makedirs(snapshot_dir, exist_ok=True)
 snapshot_saver = tf.train.Saver(max_to_keep=None)  # keep all snapshots
 sess.run(tf.global_variables_initializer())
 
+################################################
+snapshot_loader = tf.train.Saver([v for v in tf.global_variables()])
+snapshot_loader.restore(sess, pretrained_model)
+###################changes for fine tune
 # Load glove vector
+
 glove_mat = np.load(glove_mat_file)
 with tf.variable_scope('neural_module_network/layout_generation/encoder_decoder/encoder', reuse=True):
     embedding_mat = tf.get_variable('embedding_mat')
@@ -230,7 +241,7 @@ def run_training(max_iter, dataset_trn):
 
         # Save snapshot
         if (n_iter+1) % snapshot_interval == 0 or (n_iter+1) == max_iter:
-            snapshot_file = os.path.join(snapshot_dir, "tdiuc_modified_200K_%08d" % (n_iter+1))
+            snapshot_file = os.path.join(snapshot_dir, "tdiuc_modified_200K_%08d_resumed" % (n_iter+1))
             snapshot_saver.save(sess, snapshot_file, write_meta_graph=False)
             print('snapshot saved to ' + snapshot_file)
 

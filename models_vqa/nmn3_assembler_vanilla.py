@@ -10,26 +10,15 @@ _module_input_num = {
     '_Find': 0,
     '_Transform': 1,
     '_And': 2,
-    '_Describe': 1,
-    '_Count': 1,
-    '_Color': 1,
-    '_Sentiment': 1,
-    '_Scene': 1,
-    '_Activity': 1
-    }
+    '_Describe': 1}
 
 # output type of each module
 _module_output_type = {
     '_Find': 'att',
     '_Transform': 'att',
     '_And': 'att',
-    '_Describe': 'ans',
-    '_Count': 'ans',
-    '_Color': 'ans',
-    '_Sentiment': 'ans',
-    '_Scene': 'ans',
-    '_Activity': 'ans'
-    }
+    '_Describe': 'ans'}
+
 INVALID_EXPR = 'INVALID_EXPR'
 # decoding validity: maintaining a state x of [#att, #ans, T_remain]
 # when T_remain is T_decoder when decoding the first module token
@@ -55,7 +44,7 @@ def _build_validity_mats(module_names):
             att_in_nums[n_s] = _module_input_num[s]
             att_out_nums[n_s] = _module_output_type[s] == 'att'
             ans_out_nums[n_s] = _module_output_type[s] == 'ans'
-    # construct the transition matrix P
+    # construct the trasition matrix P
     for n_s, s in enumerate(module_names):
         P[n_s, 0] = att_out_nums[n_s] - att_in_nums[n_s]
         P[n_s, 1] = ans_out_nums[n_s]
@@ -194,8 +183,7 @@ class Assembler:
         # After decoding the reverse polish expression, there should be exactly
         # one expression in the stack
         if len(decoding_stack) != 1:
-            return self._invalid_expr(layout_tokens, 'final stack size not equal to 1 (%d remains)' %
-len(decoding_stack))
+            return self._invalid_expr(layout_tokens, 'final stack size not equal to 1 (%d remains)' % len(decoding_stack))
 
         result = decoding_stack[0]
         # The result type should be answer, not attention

@@ -3,8 +3,8 @@ _Transform
 _And
 _Describe
 _Count
-_Color
 _Sentiment
-_Scene
 _Activity
+_Scene
+_Color
 <eos>
